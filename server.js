@@ -3,10 +3,13 @@ const mysql = require("mysql");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const jwt = require("jsonwebtoken");
+const multer = require("multer");
+const path = require("path");
 
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
+app.use(express.static('public'))
 app.use(
   cors({
     origin: ["http://localhost:5173"],
@@ -19,47 +22,111 @@ const db = mysql.createConnection({
   host: "localhost",
   user: "root",
   password: "",
-  database: "abc_db",
+  database: "mbs_db",
 });
 
 const verifyUser = (req, res, next) => {
-  const token = req.cookies.token;
+  const token = req.headers["authorization"]?.split(" ")[1];
   if (!token) {
-    return res.json({ Massage: "we need token please provide it." });
+    return res.json({valid: false, Massage: "we need token please provide it." });
   } else {
     jwt.verify(token, "myToken", (err, decoded) => {
       if (err) {
-        return res.json({ Massage: "Authentication Error." });
+        return res.json({valid: false, Massage: "Authentication Error." });
       } else {
+        req.userId = decoded.userId;
         req.name = decoded.name;
         next();
       }
     });
   }
 };
-app.get("/", verifyUser, (req, res) => {
-  return res.json({Status: "Success", name: req.name });
-});
+
 app.post("/login", (req, res) => {
-  const sql = "SELECT * FROM login WHERE email = ? AND password = ?";
+  const sql = "SELECT * FROM user WHERE email = ? AND password = ?";
   db.query(sql, [req.body.email, req.body.password], (err, data) => {
     if (err) return res.json({ Message: "Sever Side Error" });
     if (data.length > 0) {
-      const name = data[0].name;
-      const token = jwt.sign({ name }, "myToken", { expiresIn: "1d" });
-      res.cookie("token", token);
-      return res.json({ Status: "Success" });
+      const name = data[0].f_name;
+      const userId = data[0].u_id;
+      GUser = data[0].u_id;
+      const token = jwt.sign({ name, userId }, "myToken", { expiresIn: "1d" });
+      res.cookie("token", token, { httpOnly: true, sameSite: 'Strict' });
+      return res.json({ Status: "Success", token  });
     } else {
       return res.json({ Message: "No Record exists in database" });
     }
   });
 });
 
+app.get("/checkAdmin", verifyUser, (req, res) => {
+  const sql = `
+    SELECT u.u_id, 
+    CASE 
+      WHEN a.u_id IS NOT NULL THEN 'Admin' 
+      ELSE 'Not Admin' 
+    END AS isAdmin 
+    FROM user u 
+    LEFT JOIN admin a ON u.u_id = a.u_id 
+    WHERE u.u_id = ?
+  `;
+  db.query(sql, [req.userId], (err, data) => {
+    if (err) return res.json({ Message: "Server Side Error" });
+    if (data.length > 0) {
+      return res.json({ Status: "Success", isAdmin: data[0].isAdmin });
+    } else {
+      return res.json({ Status: "Failure", Message: "User not found" });
+    }
+  });
+});
+
 app.get("/logout", (req, res)=>{
-    res.clearCookie('token');
+  res.clearCookie("token");
+    console.log("gone");
     return res.json({Status: "Success"});
 })
+app.get("/checkToken", verifyUser, (req, res) => {
+  return res.json({ valid: true, userId: req.userId, name: req.name });
+});
 
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "public/A_images");
+  },
+  filename: (req, file, cb) => {
+    cb(null, file.fieldname + "_" + Date.now() + path.extname(file.originalname));
+  },
+});
+const upload = multer({ storage: storage });
+app.post("/addRoom", upload.array('images'), (req, res) => {
+  const { roomNumber, roomType, area, capacityAdult, capacityChild, pricePerDay, description, view, headlines, technologies, services, beds, baths } = req.body;
+  const imageFilenames = req.files.map(file => file.filename);
+  const capacity = JSON.stringify({ Adult: capacityAdult, Child: capacityChild });
+  const sql = `
+    INSERT INTO room (r_name, type, area, price, r_discription, view, capacity, bed_details, technology, bath_details, r_highlight, services, image)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+  const values = [
+    roomNumber,
+    roomType,
+    area,
+    pricePerDay,
+    description,
+    view,
+    capacity,
+    JSON.stringify(beds),
+    JSON.stringify(technologies),
+    JSON.stringify(baths),
+    JSON.stringify(headlines),
+    JSON.stringify(services),
+    JSON.stringify(imageFilenames)
+  ];
+  
+  db.query(sql, values, (err, result) => {
+    if (err) return res.json({ Message: "Error inserting room data into the database" });
+    return res.json({ Status: "Success" });
+  });
+});
 app.listen(3000, () => {
   console.log("running");
 });
