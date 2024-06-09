@@ -5,6 +5,8 @@ const cookieParser = require("cookie-parser");
 const jwt = require("jsonwebtoken");
 const multer = require("multer");
 const path = require("path");
+const db = require("./db");
+const accommodationRoutes = require("./accommodationRoutes");
 
 const app = express();
 app.use(express.json());
@@ -13,18 +15,10 @@ app.use(express.static('public'))
 app.use(
   cors({
     origin: ["http://localhost:5173"],
-    methods: ["GET" , "POST"],
+    methods: ["GET" , "POST","DELETE","PUT"],
     credentials: true,
   })
 );
-
-const db = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "",
-  database: "mbs_db",
-});
-
 const verifyUser = (req, res, next) => {
   const token = req.headers["authorization"]?.split(" ")[1];
   if (!token) {
@@ -89,44 +83,8 @@ app.get("/checkToken", verifyUser, (req, res) => {
   return res.json({ valid: true, userId: req.userId, name: req.name });
 });
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "public/A_images");
-  },
-  filename: (req, file, cb) => {
-    cb(null, file.fieldname + "_" + Date.now() + path.extname(file.originalname));
-  },
-});
-const upload = multer({ storage: storage });
-app.post("/addRoom", upload.array('images'), (req, res) => {
-  const { roomNumber, roomType, area, capacityAdult, capacityChild, pricePerDay, description, view, headlines, technologies, services, beds, baths } = req.body;
-  const imageFilenames = req.files.map(file => file.filename);
-  const capacity = JSON.stringify({ Adult: capacityAdult, Child: capacityChild });
-  const sql = `
-    INSERT INTO room (r_name, type, area, price, r_discription, view, capacity, bed_details, technology, bath_details, r_highlight, services, image)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `;
-  const values = [
-    roomNumber,
-    roomType,
-    area,
-    pricePerDay,
-    description,
-    view,
-    capacity,
-    JSON.stringify(beds),
-    JSON.stringify(technologies),
-    JSON.stringify(baths),
-    JSON.stringify(headlines),
-    JSON.stringify(services),
-    JSON.stringify(imageFilenames)
-  ];
-  
-  db.query(sql, values, (err, result) => {
-    if (err) return res.json({ Message: "Error inserting room data into the database" });
-    return res.json({ Status: "Success" });
-  });
-});
+app.use("/accommodation", accommodationRoutes);
+
 app.listen(3000, () => {
   console.log("running");
 });
