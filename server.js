@@ -9,11 +9,11 @@ const path = require("path");
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
-app.use(express.static('public'))
+app.use(express.static('public'));
 app.use(
   cors({
     origin: ["http://localhost:5173"],
-    methods: ["GET" , "POST"],
+    methods: ["GET", "POST"],
     credentials: true,
   })
 );
@@ -28,11 +28,11 @@ const db = mysql.createConnection({
 const verifyUser = (req, res, next) => {
   const token = req.headers["authorization"]?.split(" ")[1];
   if (!token) {
-    return res.json({valid: false, Massage: "we need token please provide it." });
+    return res.json({ valid: false, Message: "we need token please provide it." });
   } else {
     jwt.verify(token, "myToken", (err, decoded) => {
       if (err) {
-        return res.json({valid: false, Massage: "Authentication Error." });
+        return res.json({ valid: false, Message: "Authentication Error." });
       } else {
         req.userId = decoded.userId;
         req.name = decoded.name;
@@ -52,7 +52,7 @@ app.post("/login", (req, res) => {
       GUser = data[0].u_id;
       const token = jwt.sign({ name, userId }, "myToken", { expiresIn: "1d" });
       res.cookie("token", token, { httpOnly: true, sameSite: 'Strict' });
-      return res.json({ Status: "Success", token  });
+      return res.json({ Status: "Success", token });
     } else {
       return res.json({ Message: "No Record exists in database" });
     }
@@ -80,11 +80,12 @@ app.get("/checkAdmin", verifyUser, (req, res) => {
   });
 });
 
-app.get("/logout", (req, res)=>{
+app.get("/logout", (req, res) => {
   res.clearCookie("token");
-    console.log("gone");
-    return res.json({Status: "Success"});
-})
+  console.log("gone");
+  return res.json({ Status: "Success" });
+});
+
 app.get("/checkToken", verifyUser, (req, res) => {
   return res.json({ valid: true, userId: req.userId, name: req.name });
 });
@@ -98,8 +99,10 @@ const storage = multer.diskStorage({
   },
 });
 const upload = multer({ storage: storage });
+
 app.post("/addRoom", upload.array('images'), (req, res) => {
   const { roomNumber, roomType, area, capacityAdult, capacityChild, pricePerDay, description, view, headlines, technologies, services, beds, baths } = req.body;
+  
   const imageFilenames = req.files.map(file => file.filename);
   const capacity = JSON.stringify({ Adult: capacityAdult, Child: capacityChild });
   const sql = `
@@ -127,6 +130,46 @@ app.post("/addRoom", upload.array('images'), (req, res) => {
     return res.json({ Status: "Success" });
   });
 });
+
+app.post("/addVolunteerWork", upload.single('image'), (req, res) => {
+  const { name, country, date, description, link } = req.body;
+  const imageFilename = req.file ? req.file.filename : null;
+  const sql = `
+    INSERT INTO previous_v_work (pvw_name, pvw_country, pvw_image, pvw_date, pvw_description, pvw_link)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `;
+  const values = [name, country, imageFilename, date, description, link];
+
+  db.query(sql, values, (err, result) => {
+    if (err) {
+      console.error(err);
+      return res.json({ Message: "Error inserting volunteer data into the database" });
+    }
+    return res.json({ Status: "Success" });
+  });
+});
+
+// New endpoint for volunteer teacher registration
+app.post("/registerVolunteerTeacher", upload.single('cv'), verifyUser, (req, res) => {
+  const { name, country, skills, description } = req.body;
+  const cvFilename = req.file ? req.file.filename : null;
+  const userId = req.userId;
+
+  const sql = `
+    INSERT INTO v_teacher (vt_name, vt_country, vt_skill, vt_description, vt_cv, u_id)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `;
+  const values = [name, country, skills, description, cvFilename, userId];
+
+  db.query(sql, values, (err, result) => {
+    if (err) {
+      console.error(err);
+      return res.json({ Message: "Error inserting volunteer teacher data into the database" });
+    }
+    return res.json({ Status: "Success" });
+  });
+});
+
 app.listen(3000, () => {
   console.log("running");
 });
