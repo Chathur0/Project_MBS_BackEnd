@@ -7,6 +7,7 @@ const multer = require("multer");
 const path = require("path");
 const db = require("./db");
 const accommodationRoutes = require("./accommodationRoutes");
+const userAccommodation = require("./userAccommodation");
 
 const app = express();
 app.use(express.json());
@@ -84,6 +85,7 @@ app.get("/checkToken", verifyUser, (req, res) => {
 });
 
 app.use("/accommodation", accommodationRoutes);
+app.use('/api',userAccommodation)
 
 app.listen(3000, () => {
   console.log("running");
