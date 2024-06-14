@@ -131,6 +131,19 @@ app.post("/addRoom", upload.array('images'), (req, res) => {
   });
 });
 
+// Add this code in your server.js file
+app.put("/updateVolunteerTeacherStatus", (req, res) => {
+  const { id, status } = req.body;
+  const sql = "UPDATE v_teacher SET vt_status = ? WHERE vt_id = ?";
+  db.query(sql, [status, id], (err, result) => {
+    if (err) {
+      console.error(err);
+      return res.json({ Message: "Error updating volunteer teacher status" });
+    }
+    return res.json({ Status: "Success" });
+  });
+});
+
 app.post("/addVolunteerWork", upload.single('image'), (req, res) => {
   const { name, country, date, description, link } = req.body;
   const imageFilename = req.file ? req.file.filename : null;
@@ -148,6 +161,47 @@ app.post("/addVolunteerWork", upload.single('image'), (req, res) => {
     return res.json({ Status: "Success" });
   });
 });
+
+app.post("/addVolunteerWork", upload.single('image'), (req, res) => {
+  const { name, country, date, description, link } = req.body;
+  const imageFilename = req.file ? req.file.filename : null;
+  const sql = `
+    INSERT INTO previous_v_work (pvw_name, pvw_country, pvw_image, pvw_date, pvw_description, pvw_link)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `;
+  const values = [name, country, imageFilename, date, description, link];
+
+  db.query(sql, values, (err, result) => {
+    if (err) {
+      console.error(err);
+      return res.json({ Message: "Error inserting volunteer data into the database" });
+    }
+    return res.json({ Status: "Success" });
+  });
+});
+
+// New endpoint to get previous volunteer work
+app.get("/getPreviousVolunteerWork", (req, res) => {
+  const sql = "SELECT * FROM previous_v_work";
+  db.query(sql, (err, data) => {
+    if (err) return res.json({ Message: "Server Side Error" });
+    console.log(res);
+    return res.json({ Status: "Success", data });
+  });
+});
+
+app.post("/updateVolunteerStatus", verifyUser, (req, res) => {
+  const { volunteerId, status } = req.body;
+  const sql = "UPDATE v_teacher SET vt_status = ? WHERE vt_id = ?";
+  db.query(sql, [status, volunteerId], (err, result) => {
+    if (err) {
+      console.error(err);
+      return res.json({ Message: "Error updating volunteer status" });
+    }
+    return res.json({ Status: "Success" });
+  });
+});
+
 
 // New endpoint for volunteer teacher registration
 app.post("/registerVolunteerTeacher", upload.single('cv'), verifyUser, (req, res) => {
@@ -170,6 +224,17 @@ app.post("/registerVolunteerTeacher", upload.single('cv'), verifyUser, (req, res
   });
 });
 
+// New endpoint to get volunteer teacher data
+app.get("/getVolunteerTeachers", (req, res) => {
+  const sql = "SELECT * FROM v_teacher WHERE 1";
+  db.query(sql, (err, data) => {
+    if (err) return res.json({ Message: "Server Side Error" });
+    return res.json({ Status: "Success", data });
+  });
+});
+
+
 app.listen(3000, () => {
   console.log("running");
 });
+
