@@ -138,15 +138,6 @@ router.get("/allRooms", (req, res) => {
   });
 });
 
-// router.delete("/deleteRoom/:id", (req, res) => {
-//   const roomId = req.params.id;
-//   const sql = "DELETE FROM room WHERE r_id = ?";
-//   db.query(sql, [roomId], (err, result) => {
-//     if (err) return res.json({ Message: "Server Side Error" });
-//     return res.json({ Status: "Success" });
-//   });
-// });
-
 router.delete("/deleteRoom/:id", (req, res) => {
   const roomId = req.params.id;
 

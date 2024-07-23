@@ -7,7 +7,7 @@ const multer = require("multer");
 const path = require("path");
 const db = require("./db");
 const accommodationRoutes = require("./accommodationRoutes");
-const userAccommodation = require("./userAccommodation");
+const userAccommodation = require("./bookAccommodation");
 
 const app = express();
 app.use(express.json());

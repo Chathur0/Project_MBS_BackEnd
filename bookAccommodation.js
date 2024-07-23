@@ -160,12 +160,6 @@ router.get('/booked-rooms', (req, res) => {
   const query = `
     SELECT
       r.r_id,
-      r.r_name,
-      r.type,
-      r.bed_details,
-      r.capacity,
-      r.price,
-      r.image,
       b.check_in,
       b.check_out
     FROM
@@ -178,6 +172,49 @@ router.get('/booked-rooms', (req, res) => {
   `;
 
   db.query(query, [roomType], (err, results) => {
+    if (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Database query failed' });
+    } else {
+      res.status(200).json(results);
+    }
+  });
+});
+
+
+router.get('/booked-room-details', (req, res) => {
+  const roomId = req.query.roomId;
+
+  const query = `
+    SELECT
+      b.check_in,
+      b.check_out
+    FROM
+      book_room b
+    WHERE
+      b.r_id = ? AND
+      b.approve = 1
+  `;
+
+  db.query(query, [roomId], (err, results) => {
+    if (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Database query failed' });
+    } else {
+      res.status(200).json(results);
+    }
+  });
+});
+
+router.get('/all-booked-rooms/:roomId', (req, res) => {
+  const roomId = req.params.roomId;
+  const query = `
+    SELECT *
+    FROM book_room
+    WHERE r_id = ?
+  `;
+
+  db.query(query, [roomId], (err, results) => {
     if (err) {
       console.error(err);
       res.status(500).json({ error: 'Database query failed' });
